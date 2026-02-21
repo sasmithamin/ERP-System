@@ -7,3 +7,7 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     must_change_password: bool
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str

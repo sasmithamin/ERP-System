@@ -2,7 +2,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from jose import jwt
 from datetime import datetime, timedelta
-from app.core.config import Settings
+from app.core.config import settings
 
 #pw hash
 
@@ -27,4 +27,4 @@ def create_access_token(user_id: str, role: str):
         "type": "access",
         "exp": datetime.utcnow() + timedelta(minutes=15)
     }
-    return jwt.encode(paylaod, Settings.JWT_SECRET, algorithm=Settings.JWT_ALGORITHM)
+    return jwt.encode(paylaod, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
