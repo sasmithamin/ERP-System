@@ -5,17 +5,34 @@ import {
   AlertTriangle,
   TrendingUp,
   DollarSign,
+  Loader2,
 } from "lucide-react";
 
 import { StatCard } from "./StatCard";
+import { useDashboardStats } from "@/hooks/use-dashboard";
 import { mockDashboardStats } from "@/data/mockData";
 import type { DashboardStats as DashboardStatsType } from "@/types";
 
 export function DashboardStats() {
-  const stats: DashboardStatsType = mockDashboardStats;
+  const { stats: apiStats, loading } = useDashboardStats();
+  
+  // Fallback to mock data if API fails or is loading
+  const stats: DashboardStatsType = apiStats || mockDashboardStats;
 
   const revenueFormatted = `Rs. ${stats.todayRevenue.toLocaleString()}`;
   const weeklyGrowthFormatted = `${stats.weeklyGrowth}%`;
+
+  if (loading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="h-[120px] rounded-lg border bg-card animate-pulse flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

@@ -217,7 +217,7 @@ export function AppSidebar() {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-sidebar-foreground">
-              DMS Negombo
+              SAS Negombo
             </span>
             <span className="text-xs text-sidebar-foreground/60">
               Distribution System

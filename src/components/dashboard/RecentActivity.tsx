@@ -1,12 +1,13 @@
-import { ShoppingCart, Truck, Package, User } from "lucide-react";
+import { ShoppingCart, Truck, Package, User, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useRecentActivities } from "@/hooks/use-dashboard";
 import { mockActivities } from "@/data/mockData";
 import { formatDistanceToNow } from "date-fns";
-import type { Activity } from "@/types";
+import type { ActivityItem } from "@/types";
 
-type ActivityType = Activity["type"];
+type ActivityType = ActivityItem["type"];
 
 const activityIcons: Record<ActivityType, React.ElementType> = {
   order: ShoppingCart,
@@ -23,6 +24,24 @@ const activityColors: Record<ActivityType, string> = {
 };
 
 export function RecentActivity() {
+  const { activities: apiActivities, loading } = useRecentActivities(10);
+  
+  // Fallback to mock data if API fails
+  const activities = apiActivities.length > 0 ? apiActivities : mockActivities;
+
+  if (loading) {
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle className="text-lg">Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[300px]">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="h-full">
       <CardHeader>
@@ -31,13 +50,13 @@ export function RecentActivity() {
 
       <CardContent className="p-0">
         <ScrollArea className="h-[300px] px-6">
-          {mockActivities.length === 0 ? (
+          {activities.length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">
               No recent activity.
             </p>
           ) : (
             <div className="space-y-4 pb-4">
-              {mockActivities.map((activity) => {
+              {activities.map((activity) => {
                 const Icon = activityIcons[activity.type];
 
                 return (
@@ -56,7 +75,7 @@ export function RecentActivity() {
                         {activity.message}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(activity.timestamp, {
+                        {formatDistanceToNow(new Date(activity.timestamp), {
                           addSuffix: true,
                         })}
                       </p>

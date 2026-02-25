@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from bson import ObjectId
 
 from app.core.config import settings
-from app.core.database import users_collection
+from app.core.database import Database
 
 
 # -----------------------
@@ -16,8 +16,10 @@ from app.core.database import users_collection
 
 ph = PasswordHasher()
 
+
 def hash_password(password: str) -> str:
     return ph.hash(password)
+
 
 def verify_password(password: str, hashed: str) -> bool:
     try:
@@ -36,7 +38,7 @@ def create_access_token(user_id: str, role: str):
         "sub": user_id,
         "role": role,
         "type": "access",
-        "exp": datetime.utcnow() + timedelta(minutes=15)
+        "exp": datetime.utcnow() + timedelta(minutes=60)  # 1 hour token
     }
 
     return jwt.encode(
@@ -54,7 +56,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
-
     try:
         payload = jwt.decode(
             token,
@@ -76,7 +77,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             detail="Invalid or expired token"
         )
 
-    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    db = Database.get_db()
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
 
     if not user:
         raise HTTPException(

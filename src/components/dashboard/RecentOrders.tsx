@@ -2,8 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useRecentOrders } from "@/hooks/use-dashboard";
 import { mockOrders, getShopById } from "@/data/mockData";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 import type { Order } from "@/types";
 
 type OrderStatus = Order["status"];
@@ -20,7 +22,23 @@ const statusColors: Record<OrderStatus, string> = {
 
 export function RecentOrders() {
   const navigate = useNavigate();
-  const recentOrders = mockOrders.slice(0, 5);
+  const { orders: apiOrders, loading } = useRecentOrders(5);
+  
+  // Fallback to mock data if API fails
+  const recentOrders = apiOrders.length > 0 ? apiOrders : mockOrders.slice(0, 5);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg">Recent Orders</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[200px]">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -43,7 +61,8 @@ export function RecentOrders() {
         ) : (
           <div className="space-y-3">
             {recentOrders.map((order) => {
-              const shop = getShopById(order.shopId);
+              const shop = order.shop || getShopById(order.shopId);
+              const shopName = typeof shop === 'object' ? shop?.name : (order as any).shopName;
 
               return (
                 <div
@@ -75,7 +94,7 @@ export function RecentOrders() {
                     </div>
 
                     <p className="text-xs text-muted-foreground">
-                      {shop?.name ?? "Unknown shop"} •{" "}
+                      {shopName ?? "Unknown shop"} •{" "}
                       {order.items.length} items
                     </p>
                   </div>

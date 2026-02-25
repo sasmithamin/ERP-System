@@ -10,5 +10,11 @@ async def login_user(email: str, password: str):
 
     return {
         "access_token": create_access_token(str(user["_id"]), user["role"]),
-        "must_change_password": user["must_change_password"]
+        "must_change_password": user["must_change_password"],
+        "user": {
+            "id": str(user["_id"]),
+            "email": user["email"],
+            "name": user.get("name", ""),
+            "role": user["role"]
+        }
     }

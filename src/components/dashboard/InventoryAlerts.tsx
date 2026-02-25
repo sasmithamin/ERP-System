@@ -1,14 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useInventoryAlerts } from "@/hooks/use-dashboard";
 import { mockInventory, getProductById } from "@/data/mockData";
-import { AlertTriangle, Clock } from "lucide-react";
+import { AlertTriangle, Clock, Loader2 } from "lucide-react";
 import { differenceInDays } from "date-fns";
 
 export function InventoryAlerts() {
+  const { alerts, loading } = useInventoryAlerts();
   const today = new Date();
 
-  const lowStockItems = mockInventory
+  // Use API data if available, otherwise fallback to mock data
+  const hasApiData = alerts && (alerts.lowStock.length > 0 || alerts.expiringItems.length > 0);
+
+  // Fallback mock data calculations
+  const mockLowStockItems = mockInventory
     .map((item) => ({
       item,
       product: getProductById(item.productId),
@@ -18,7 +24,7 @@ export function InventoryAlerts() {
         product && item.quantity <= product.reorderLevel
     );
 
-  const expiringItems = mockInventory
+  const mockExpiringItems = mockInventory
     .map((item) => ({
       item,
       product: getProductById(item.productId),
@@ -28,6 +34,22 @@ export function InventoryAlerts() {
       const daysUntilExpiry = differenceInDays(item.expiryDate, today);
       return daysUntilExpiry >= 0 && daysUntilExpiry <= 7;
     });
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Inventory Alerts</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[200px]">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const lowStockItems = hasApiData ? alerts.lowStock : mockLowStockItems;
+  const expiringItems = hasApiData ? alerts.expiringItems : mockExpiringItems;
 
   return (
     <Card>
@@ -41,26 +63,29 @@ export function InventoryAlerts() {
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-warning" />
             <span className="text-sm font-medium">
-              Low Stock ({lowStockItems.length})
+              Low Stock ({hasApiData ? alerts.lowStockCount : lowStockItems.length})
             </span>
           </div>
 
           {lowStockItems.length > 0 ? (
-            lowStockItems.slice(0, 3).map(({ item, product }) => {
+            lowStockItems.slice(0, 3).map((item: any) => {
+              // Handle both API and mock data formats
+              const name = hasApiData ? item.productName : item.product?.name;
+              const quantity = hasApiData ? item.currentQuantity : item.item?.quantity;
+              const reorderLevel = hasApiData ? item.reorderLevel : item.product?.reorderLevel;
+              const id = hasApiData ? item.id : item.item?.id;
+              
               const percentage = Math.min(
                 100,
-                Math.max(
-                  0,
-                  (item.quantity / product!.reorderLevel) * 100
-                )
+                Math.max(0, (quantity / reorderLevel) * 100)
               );
 
               return (
-                <div key={item.id} className="space-y-1.5">
+                <div key={id} className="space-y-1.5">
                   <div className="flex justify-between text-sm">
-                    <span>{product!.name}</span>
+                    <span>{name}</span>
                     <span className="text-muted-foreground">
-                      {item.quantity} / {product!.reorderLevel}
+                      {quantity} / {reorderLevel}
                     </span>
                   </div>
                   <Progress value={percentage} className="h-2" />
@@ -79,26 +104,29 @@ export function InventoryAlerts() {
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-destructive" />
             <span className="text-sm font-medium">
-              Expiring Soon ({expiringItems.length})
+              Expiring Soon ({hasApiData ? alerts.expiringCount : expiringItems.length})
             </span>
           </div>
 
           {expiringItems.length > 0 ? (
-            expiringItems.slice(0, 3).map(({ item, product }) => {
-              const daysLeft = differenceInDays(
-                item.expiryDate!,
-                today
-              );
+            expiringItems.slice(0, 3).map((item: any) => {
+              // Handle both API and mock data formats
+              const name = hasApiData ? item.productName : item.product?.name;
+              const batchNumber = hasApiData ? item.batchNumber : item.item?.batchNumber;
+              const id = hasApiData ? item.id : item.item?.id;
+              const daysLeft = hasApiData 
+                ? item.daysLeft 
+                : differenceInDays(item.item?.expiryDate!, today);
 
               return (
                 <div
-                  key={item.id}
+                  key={id}
                   className="flex items-center justify-between rounded-md border p-2 text-sm"
                 >
                   <div>
-                    <p className="font-medium">{product?.name}</p>
+                    <p className="font-medium">{name}</p>
                     <p className="text-xs text-muted-foreground">
-                      Batch: {item.batchNumber}
+                      Batch: {batchNumber}
                     </p>
                   </div>
 

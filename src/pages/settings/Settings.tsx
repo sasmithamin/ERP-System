@@ -22,7 +22,7 @@ export default function Settings() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Company Name</Label>
-              <Input defaultValue="DMS Negombo" />
+              <Input defaultValue="SAS Negombo" />
             </div>
             <div className="space-y-2">
               <Label>Contact Email</Label>

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import api from "@/lib/api";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,14 +17,40 @@ export default function Login() {
   const [otp, setOtp] = useState("");
 
   const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    // Simulate login
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate("/dashboard");
-    }, 1000);
-  };
+  e.preventDefault();
+  setIsLoading(true);
+
+  try {
+    const email = (document.getElementById("email") as HTMLInputElement).value;
+    const password = (document.getElementById("password") as HTMLInputElement).value;
+
+    const response = await api.post("/auth/login", {
+      email,
+      password,
+    });
+
+    const { access_token, user } = response.data;
+
+    // Save token + user
+    localStorage.setItem("token", access_token);
+    localStorage.setItem("user", JSON.stringify(user));
+
+    // Redirect based on role
+if (user.role === "admin") {
+  navigate("/dashboard");
+} else if (user.role === "manager") {
+  navigate("/dashboard");
+} else if (user.role === "staff") {
+  navigate("/deliveries");
+} else {
+  navigate("/login");
+}
+  } catch (error: any) {
+    alert(error.response?.data?.detail || "Login failed");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handlePhoneLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +82,7 @@ export default function Login() {
               <Package className="h-8 w-8" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">DMS Negombo</h1>
+              <h1 className="text-2xl font-bold">SAS Negombo</h1>
               <p className="text-primary-foreground/80">Distribution Management System</p>
             </div>
           </div>
@@ -94,7 +121,7 @@ export default function Login() {
               <Package className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">DMS Negombo</h1>
+              <h1 className="text-xl font-bold">SAS Negombo</h1>
               <p className="text-sm text-muted-foreground">Distribution System</p>
             </div>
           </div>
@@ -236,7 +263,7 @@ export default function Login() {
           </Card>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
-            © 2025 DMS Negombo. All rights reserved.
+            © 2025 SAS Negombo. All rights reserved.
           </p>
         </div>
       </div>

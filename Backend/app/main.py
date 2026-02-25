@@ -1,14 +1,45 @@
 from fastapi import FastAPI
-from app.api.auth_routes import router as auth_router
-from app.utils.seed_admin import seed_admin
-from app.api.user_routes import router as user_router
+from fastapi.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
 
-app = FastAPI()
+from app.core.config import settings
+from app.core.database import Database
+from app.api import auth_routes, user_routes
+from app.api.endpoints import dashboard
 
-app.include_router(user_router)
+app = FastAPI(
+    title="ERP System API",
+    description="Backend API for ERP System",
+    version="1.0.0"
+)
 
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Startup event
 @app.on_event("startup")
-async def startup():
-    await seed_admin()
+async def startup_event():
+    await Database.connect_db()
+    # Create indexes
+    await Database.create_indexes()
 
-app.include_router(auth_router)
+# Shutdown event
+@app.on_event("shutdown")
+async def shutdown_event():
+    await Database.close_db()
+
+# Health check
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+# Include routers
+app.include_router(auth_routes.router, prefix="/api")
+app.include_router(user_routes.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")  # Add dashboard routes

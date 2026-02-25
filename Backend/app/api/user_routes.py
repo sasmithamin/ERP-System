@@ -1,17 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime
 from bson import ObjectId
-from datetime import datetime
 from app.api.dependencies import require_role
 from app.core.security import hash_password
-from app.core.database import users_collection
+from app.core.database import Database
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-
 # Create User (Admin Only)
-
 @router.post("/")
 async def create_user(
     email: str,
@@ -19,8 +16,7 @@ async def create_user(
     role: str,
     current_user=Depends(require_role(["admin"]))
 ):
-    
-    allowed_roles = ["admin", "employee", "manager", "warehouse"]
+    allowed_roles = ["admin", "employee", "manager", "warehouse", "delivery"]
 
     if role not in allowed_roles:
         raise HTTPException(
@@ -28,7 +24,8 @@ async def create_user(
             detail=f"Invalid role. Allowed roles: {allowed_roles}"
         )
 
-    existing = await users_collection.find_one({"email": email})
+    db = Database.get_db()
+    existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
@@ -36,12 +33,12 @@ async def create_user(
         "email": email,
         "hashed_password": hash_password(password),
         "role": role,
-        "is_active": True,
+        "isActive": True,
         "must_change_password": True,
-        "created_at": datetime.utcnow()
+        "createdAt": datetime.utcnow()
     }
 
-    result = await users_collection.insert_one(new_user)
+    result = await db.users.insert_one(new_user)
 
     return {
         "message": "User created",
@@ -49,21 +46,21 @@ async def create_user(
     }
 
 
-
 # Get All Users (Admin Only)
-
 @router.get("/")
 async def get_users(
     current_user=Depends(require_role(["admin"]))
 ):
-
-    users = await users_collection.find().to_list(100)
+    db = Database.get_db()
+    users = await db.users.find().to_list(100)
 
     for user in users:
         user["_id"] = str(user["_id"])
-        del user["hashed_password"]
+        if "hashed_password" in user:
+            del user["hashed_password"]
 
     return users
+
 
 @router.patch("/{user_id}/status")
 async def update_user_status(
@@ -72,23 +69,24 @@ async def update_user_status(
     current_user=Depends(require_role(["admin"]))
 ):
     # Prevent admin from deactivating themselves
-    if str(current_user.get("_id")) == user_id:
+    if str(current_user.get("sub")) == user_id:
         raise HTTPException(
             status_code=400,
             detail="You cannot deactivate your own account"
         )
 
-    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    db = Database.get_db()
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    await users_collection.update_one(
+    await db.users.update_one(
         {"_id": ObjectId(user_id)},
         {
             "$set": {
-                "is_active": is_active,
-                "updated_at": datetime.utcnow()
+                "isActive": is_active,
+                "updatedAt": datetime.utcnow()
             }
         }
     )
@@ -96,3 +94,37 @@ async def update_user_status(
     return {
         "message": f"User {'activated' if is_active else 'deactivated'} successfully"
     }
+
+
+@router.patch("/{user_id}/role")
+async def update_user_role(
+    user_id: str,
+    role: str,
+    current_user=Depends(require_role(["admin"]))
+):
+    """Change user role (Admin Only)"""
+    allowed_roles = ["admin", "employee", "manager", "warehouse", "delivery"]
+    
+    if role not in allowed_roles:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid role. Allowed roles: {allowed_roles}"
+        )
+    
+    db = Database.get_db()
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {
+                "role": role,
+                "updatedAt": datetime.utcnow()
+            }
+        }
+    )
+    
+    return {"message": f"User role updated to {role}"}
